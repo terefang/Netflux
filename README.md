@@ -77,7 +77,6 @@ NetfluxClient client = NetfluxClient.create("localhost", 8080);
 client.registerAdapter(HelloPacket.class, (packet, context) -> {
     System.out.println("Server says: " + packet.message());
 });
-client.connect();
 client.send(new HelloPacket("Hello from client!"));
 ```
 
