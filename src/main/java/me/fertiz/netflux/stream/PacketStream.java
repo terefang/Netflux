@@ -1,59 +1,75 @@
 package me.fertiz.netflux.stream;
 
 import me.fertiz.netflux.data.Packet;
+import me.fertiz.netflux.util.DataUnit;
+import me.fertiz.netflux.util.PacketSerializer;
 
 import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.net.Socket;
+import java.nio.ByteBuffer;
+import java.nio.channels.SocketChannel;
 
 public class PacketStream {
-    private final ObjectOutputStream out;
-    private final ObjectInputStream in;
 
-    private PacketStream(ObjectOutputStream out, ObjectInputStream in) {
-        this.out = out;
-        this.in = in;
-    }
+    private static final int MAX_PACKET_SIZE = Math.toIntExact(DataUnit.KILOBIT.convertTo(DataUnit.BIT, 64)); // 64 KiB
 
-    public static PacketStream create(Socket socket) {
-        try {
-            ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
-            ObjectInputStream in = new ObjectInputStream(socket.getInputStream());
-            return new PacketStream(out, in);
-        } catch (IOException e) {
-            System.out.println("Failed to create PacketStream: " + e.getMessage());
-            return null;
-        }
+    private final SocketChannel channel;
+
+    private final ByteBuffer readBuffer;
+
+    private PacketStream(SocketChannel channel) {
+        this.channel = channel;
+        this.readBuffer = ByteBuffer.allocateDirect(MAX_PACKET_SIZE);
     }
 
     public void send(Packet packet) {
+        byte[] bytes = PacketSerializer.serialize(packet);
+        ByteBuffer buf = ByteBuffer.allocate(4 + bytes.length);
+        buf.putInt(bytes.length);
+        buf.put(bytes);
+        buf.flip();
         try {
-            out.writeObject(packet);
-            out.flush();
-        } catch (IOException e) {
-            System.out.println("Failed to send packet: " + e.getMessage());
+            while (buf.hasRemaining()) {
+                channel.write(buf);
+            }
+        } catch (IOException ex) {
+            System.out.printf("Can't send packet (%s): %s%n", packet.getClass().getSimpleName(), ex.getMessage());
         }
+
     }
 
-    public Packet receive() {
-        try {
-            Object obj = in.readObject();
-            if (obj instanceof Packet packet) {
-                return packet;
-            }
-            System.out.println("Received unexpected object: " + obj);
-        } catch (IOException | ClassNotFoundException e) {
-            System.out.println("Failed to receive packet: " + e.getMessage());
+    public Packet receive() throws IOException {
+        int bytesRead = channel.read(readBuffer);
+
+        if (bytesRead == -1) return null;
+        if (readBuffer.position() < 4) return null;
+
+        readBuffer.flip();
+        int length = readBuffer.getInt();
+
+        if (length <= 0 || length > MAX_PACKET_SIZE - 4) throw new IOException("Invalid packet size");
+
+        if (readBuffer.remaining() < length) {
+            readBuffer.compact();
+            return null;
         }
-        return null;
+
+        byte[] packetBytes = new byte[length];
+        readBuffer.get(packetBytes);
+
+        readBuffer.compact();
+
+        return PacketSerializer.deserialize(packetBytes);
     }
+
 
     public void close() {
         try {
-            out.close();
-            in.close();
+            channel.close();
         } catch (IOException ignored) {}
+    }
+
+    public static PacketStream create(SocketChannel channel) {
+        return new PacketStream(channel);
     }
 }
 

@@ -1,50 +1,63 @@
 package me.fertiz.netflux.server;
 
+import me.fertiz.netflux.context.impl.ServerContext;
 import me.fertiz.netflux.data.Packet;
 import me.fertiz.netflux.registry.PacketRegistry;
 import me.fertiz.netflux.stream.PacketStream;
 
 import java.io.IOException;
-import java.net.Socket;
+import java.nio.channels.SocketChannel;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicBoolean;
 
-public class ClientHandler implements Runnable {
+public class ClientHandler {
 
     private final PacketRegistry registry;
     private final PacketStream stream;
 
-    private boolean running = true;
-    private final Socket client;
+    private final SocketChannel client;
     private final UUID clientId;
+    private volatile boolean connected = true;
 
-    public ClientHandler(Socket client, PacketRegistry registry) {
+    private final ServerContext serverContext;
+
+    public ClientHandler(SocketChannel client, PacketRegistry registry) {
         this.client = client;
-        this.clientId = UUID.randomUUID();
         this.registry = registry;
+
         this.stream = PacketStream.create(client);
+        this.clientId = UUID.randomUUID();
+
+        this.serverContext = new ServerContext(this);
     }
 
-    @Override
-    public void run() {
-        while (running) {
-            Packet packet = stream.receive();
-            if (packet == null) {
-                break;
+    public boolean handleRead() {
+        try {
+            Packet packet;
+            while ((packet = stream.receive()) != null) {
+                registry.handle(packet, serverContext);
             }
-            registry.handle(packet, clientId);
+            return true;
+        } catch (IOException e) {
+            return false;
         }
     }
+
 
     public void send(Packet packet) {
         stream.send(packet);
     }
 
     public void disconnect() {
-        this.running = false;
+        this.connected = false;
         stream.close();
-        try {
-            client.close();
-        } catch (IOException ignored) {}
+    }
+
+    public boolean isConnected() {
+        return connected;
+    }
+
+    public UUID getClientId() {
+        return clientId;
     }
 }
+

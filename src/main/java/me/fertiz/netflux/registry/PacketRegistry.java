@@ -1,15 +1,15 @@
 package me.fertiz.netflux.registry;
 
 import me.fertiz.netflux.adapter.PacketAdapter;
+import me.fertiz.netflux.context.NetfluxContext;
 import me.fertiz.netflux.data.Packet;
 
 import java.util.Map;
-import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 
 public class PacketRegistry {
-    private final Map<Class<? extends Packet>, PacketAdapter<? extends Packet>> handlers;
+    private final Map<Class<? extends Packet>, PacketAdapter<? extends Packet, ? extends NetfluxContext>> handlers;
 
     private Consumer<Packet> defaultHandler;
 
@@ -21,11 +21,11 @@ public class PacketRegistry {
     }
 
     @SuppressWarnings("unchecked")
-    public PacketAdapter<Packet> getAdapter(Class<? extends Packet> packetClass) {
-        return (PacketAdapter<Packet>) handlers.get(packetClass);
+    public PacketAdapter<Packet, NetfluxContext> getAdapter(Class<? extends Packet> packetClass) {
+        return (PacketAdapter<Packet, NetfluxContext>) handlers.get(packetClass);
     }
 
-    public <T extends Packet> void registerAdapter(Class<T> packetClass, PacketAdapter<T> adapter) {
+    public <T extends Packet, C extends NetfluxContext> void registerAdapter(Class<T> packetClass, PacketAdapter<T, C> adapter) {
         this.handlers.put(packetClass, adapter);
     }
 
@@ -34,10 +34,10 @@ public class PacketRegistry {
     }
 
     @SuppressWarnings("unchecked")
-    public void handle(Packet packet, UUID client) {
-        PacketAdapter<Packet> handler = (PacketAdapter<Packet>) handlers.get(packet.getClass());
+    public void handle(Packet packet, NetfluxContext context) {
+        PacketAdapter<Packet, NetfluxContext> handler = (PacketAdapter<Packet, NetfluxContext>) handlers.get(packet.getClass());
         if (handler != null) {
-            handler.handle(packet, client);
+            handler.handle(packet, context);
         } else {
             defaultHandler.accept(packet);
         }
