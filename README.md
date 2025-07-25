@@ -50,7 +50,7 @@ After a successful build, include the generated JAR from the `build/libs/` direc
 
 1. **Define your packets** by implementing the `Packet` interface (Java records recommended).
 2. **Create a server or client** using the provided factory methods.
-3. **Register packet handlers** with `.onPacket()` on your server or client.
+3. **Register packet handlers** with `.registerAdapter()` on your server or client.
 4. **Start your server**, connect your client, and start exchanging packets.
 5. **Handle client lifecycle events** (optional).
 
