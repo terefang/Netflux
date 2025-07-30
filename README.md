@@ -133,7 +133,7 @@ client.registerAdapter(HelloPacket.class, new HelloPacketClientAdapter());
 
 ## License
 
-MIT License. See [LICENSE](./LICENSE) for details.
+The Unlicense. See [LICENSE](./LICENSE) for details.
 
 ---
 
