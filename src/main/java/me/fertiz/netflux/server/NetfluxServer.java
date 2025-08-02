@@ -5,9 +5,12 @@ import me.fertiz.netflux.context.NetfluxContext;
 import me.fertiz.netflux.context.impl.ServerContext;
 import me.fertiz.netflux.data.Packet;
 import me.fertiz.netflux.registry.PacketRegistry;
+import me.fertiz.netflux.util.CryptoUtil;
 import me.fertiz.netflux.util.ExecutorUtil;
 
 import java.io.IOException;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -20,6 +23,7 @@ import java.util.*;
 public class NetfluxServer {
 
     private final int port;
+    private final byte[] secret;
     private volatile boolean running = false;
     private Selector selector;
     private ServerSocketChannel serverChannel;
@@ -28,12 +32,18 @@ public class NetfluxServer {
 
     private Consumer<UUID> onClientConnected;
     private Consumer<UUID> onClientDisconnected;
-
+    
     private NetfluxServer(int port) {
+        this(port, null);
+    }
+    
+    private NetfluxServer(int port, byte[] secret) {
         this.port = port;
         this.registry = new PacketRegistry();
         this.clients = new ConcurrentHashMap<>();
+        this.secret = secret;
     }
+    
 
     private void run() {
         try {
@@ -48,7 +58,7 @@ public class NetfluxServer {
                         SocketChannel clientChannel = serverChannel.accept();
                         if (clientChannel != null) {
                             clientChannel.configureBlocking(false);
-                            ClientHandler handler = new ClientHandler(clientChannel, registry);
+                            ClientHandler handler = new ClientHandler(clientChannel, registry, secret);
                             clients.put(handler.getClientId(), handler);
                             clientChannel.register(selector, SelectionKey.OP_READ, handler);
                             onClientConnected.accept(handler.getClientId());
@@ -126,9 +136,20 @@ public class NetfluxServer {
     public PacketRegistry getRegistry() {
         return registry;
     }
-
+    
     public static NetfluxServer create(int port) {
         return new NetfluxServer(port);
+    }
+    
+    public static NetfluxServer create(int port, String secret)
+            throws NoSuchAlgorithmException, InvalidKeyException
+    {
+        return new NetfluxServer(port, CryptoUtil.makeKey(secret));
+    }
+    
+    public static NetfluxServer create(int port, byte[] secretKey)
+    {
+        return new NetfluxServer(port, secretKey);
     }
 }
 

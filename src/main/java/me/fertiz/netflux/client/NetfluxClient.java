@@ -6,15 +6,18 @@ import me.fertiz.netflux.context.impl.ClientContext;
 import me.fertiz.netflux.data.Packet;
 import me.fertiz.netflux.registry.PacketRegistry;
 import me.fertiz.netflux.stream.PacketStream;
+import me.fertiz.netflux.util.CryptoUtil;
 import me.fertiz.netflux.util.ExecutorUtil;
 import me.fertiz.netflux.util.Result;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.channels.SocketChannel;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
 
 public class NetfluxClient {
-
+    
     private volatile boolean running = false;
 
     private final SocketChannel channel;
@@ -24,9 +27,9 @@ public class NetfluxClient {
 
     private final PacketRegistry registry;
 
-    private NetfluxClient(String ip, int port) {
+    private NetfluxClient(String ip, int port, byte[] secret) {
         this.channel = this.openSocketChannel(ip, port);
-        this.stream = PacketStream.create(channel);
+        this.stream = PacketStream.create(channel, secret);
         this.context = new ClientContext(this);
         this.registry = new PacketRegistry();
         this.startReceiving();
@@ -78,8 +81,18 @@ public class NetfluxClient {
     public boolean isConnected() {
         return this.channel != null && this.channel.isConnected();
     }
-
+    
     public static NetfluxClient create(String ip, int port) {
-        return new NetfluxClient(ip, port);
+        return new NetfluxClient(ip, port, null);
+    }
+
+    public static NetfluxClient create(String ip, int port, byte[] secretKey) {
+        return new NetfluxClient(ip, port, secretKey);
+    }
+
+    public static NetfluxClient create(String ip, int port, String secret)
+            throws NoSuchAlgorithmException, InvalidKeyException
+    {
+        return new NetfluxClient(ip, port, CryptoUtil.makeKey(secret));
     }
 }

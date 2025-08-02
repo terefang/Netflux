@@ -1,6 +1,7 @@
 package me.fertiz.netflux.stream;
 
 import me.fertiz.netflux.data.Packet;
+import me.fertiz.netflux.util.CryptoUtil;
 import me.fertiz.netflux.util.DataUnit;
 import me.fertiz.netflux.util.PacketSerializer;
 
@@ -15,16 +16,22 @@ public class PacketStream {
     private final SocketChannel channel;
 
     private final ByteBuffer readBuffer;
-
-    private PacketStream(SocketChannel channel) {
+    private final byte[] secretKey;
+    
+    private PacketStream(SocketChannel channel, byte[] secretKey) {
         this.channel = channel;
         this.readBuffer = ByteBuffer.allocateDirect(MAX_PACKET_SIZE);
+        this.secretKey = secretKey;
     }
 
     public void send(Packet packet) {
         byte[] bytes = PacketSerializer.serialize(packet);
         ByteBuffer buf = ByteBuffer.allocate(4 + bytes.length);
         buf.putInt(bytes.length);
+        if(this.secretKey!=null)
+        {
+            bytes = CryptoUtil.obfuscate(this.secretKey, bytes);
+        }
         buf.put(bytes);
         buf.flip();
         try {
@@ -55,6 +62,10 @@ public class PacketStream {
 
         byte[] packetBytes = new byte[length];
         readBuffer.get(packetBytes);
+        if(this.secretKey!=null)
+        {
+            packetBytes = CryptoUtil.defuscate(this.secretKey, packetBytes);
+        }
 
         readBuffer.compact();
 
@@ -67,9 +78,13 @@ public class PacketStream {
             channel.close();
         } catch (IOException ignored) {}
     }
-
+    
     public static PacketStream create(SocketChannel channel) {
-        return new PacketStream(channel);
+        return new PacketStream(channel, null);
+    }
+
+    public static PacketStream create(SocketChannel channel, byte[] secretKey) {
+        return new PacketStream(channel, secretKey);
     }
 }
 
