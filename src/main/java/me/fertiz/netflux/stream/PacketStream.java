@@ -64,7 +64,7 @@ public class PacketStream {
         readBuffer.get(packetBytes);
         if(this.secretKey!=null)
         {
-            packetBytes = CryptoUtil.defuscate(this.secretKey, packetBytes);
+            packetBytes = CryptoUtil.deobfuscate(this.secretKey, packetBytes);
         }
 
         readBuffer.compact();

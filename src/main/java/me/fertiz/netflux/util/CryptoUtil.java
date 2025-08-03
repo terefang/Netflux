@@ -9,7 +9,7 @@ import java.security.NoSuchAlgorithmException;
 
 public class CryptoUtil
 {
-    public static byte[] obfuscate(byte[] secret, byte[] data)
+    private static byte[] do_fuscate(byte[] secret, byte[] data)
     {
         for(int i=0; i<data.length; i++)
         {
@@ -20,15 +20,15 @@ public class CryptoUtil
         return data;
     }
 
-    public static byte[] defuscate(byte[] secret, byte[] data)
+    public static byte[] obfuscate(byte[] secret, byte[] data)
     {
-        for(int i=0; i<data.length; i++)
-        {
-            int _s = (secret[i % secret.length]+i) & 0xff;
-            int _d = data[i] & 0xff;
-            data[i] = (byte) (_s ^ _d);
-        }
-        return data;
+        return do_fuscate(secret, data);
+    }
+
+    
+    public static byte[] deobfuscate(byte[] secret, byte[] data)
+    {
+        return do_fuscate(secret, data);
     }
     
     public static byte[] hashMac(String _name, byte[] _key, byte[]... _buffer)
@@ -80,6 +80,12 @@ public class CryptoUtil
     public static byte[] makeKey(String _secret)
             throws NoSuchAlgorithmException, InvalidKeyException
     {
-        return sha512HMac(_secret.getBytes(StandardCharsets.UTF_8),"s3crEt$01!".getBytes(StandardCharsets.UTF_8));
+        return makeKey(_secret,"s3crEt$01!".getBytes(StandardCharsets.UTF_8));
+    }
+
+    public static byte[] makeKey(String _secret, byte[] salt)
+            throws NoSuchAlgorithmException, InvalidKeyException
+    {
+        return sha512HMac(_secret.getBytes(StandardCharsets.UTF_8), salt);
     }
 }

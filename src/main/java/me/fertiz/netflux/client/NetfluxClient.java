@@ -89,10 +89,16 @@ public class NetfluxClient {
     public static NetfluxClient create(String ip, int port, byte[] secretKey) {
         return new NetfluxClient(ip, port, secretKey);
     }
-
+    
     public static NetfluxClient create(String ip, int port, String secret)
             throws NoSuchAlgorithmException, InvalidKeyException
     {
         return new NetfluxClient(ip, port, CryptoUtil.makeKey(secret));
+    }
+    
+    public static NetfluxClient create(String ip, int port, String secret, byte[] salt)
+            throws NoSuchAlgorithmException, InvalidKeyException
+    {
+        return new NetfluxClient(ip, port, CryptoUtil.makeKey(secret, salt));
     }
 }

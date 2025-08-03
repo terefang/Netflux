@@ -147,6 +147,12 @@ public class NetfluxServer {
         return new NetfluxServer(port, CryptoUtil.makeKey(secret));
     }
     
+    public static NetfluxServer create(int port, String secret, byte[] salt)
+            throws NoSuchAlgorithmException, InvalidKeyException
+    {
+        return new NetfluxServer(port, CryptoUtil.makeKey(secret, salt));
+    }
+    
     public static NetfluxServer create(int port, byte[] secretKey)
     {
         return new NetfluxServer(port, secretKey);
