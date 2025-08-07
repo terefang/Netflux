@@ -19,14 +19,18 @@ public class ClientHandler {
     private volatile boolean connected = true;
 
     private final ServerContext serverContext;
-
+    
     public ClientHandler(SocketChannel client, PacketRegistry registry) {
+        this(client, registry, null);
+    }
+
+    public ClientHandler(SocketChannel client, PacketRegistry registry, byte[] secret) {
         this.client = client;
         this.registry = registry;
-
-        this.stream = PacketStream.create(client);
+        
+        this.stream = PacketStream.create(client, secret);
         this.clientId = UUID.randomUUID();
-
+        
         this.serverContext = new ServerContext(this);
     }
 
